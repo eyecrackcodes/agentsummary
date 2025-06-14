@@ -46,7 +46,9 @@ export const DataIngestion: React.FC = () => {
 
     try {
       const res = await axios.post(
-        "http://localhost:4000/api/debug",
+        `${
+          import.meta.env.VITE_API_BASE_URL || "http://localhost:4000/api"
+        }/debug`,
         formData,
         {
           headers: { "Content-Type": "multipart/form-data" },
@@ -75,7 +77,9 @@ export const DataIngestion: React.FC = () => {
 
     try {
       const res = await axios.post(
-        "http://localhost:4000/api/upload",
+        `${
+          import.meta.env.VITE_API_BASE_URL || "http://localhost:4000/api"
+        }/upload`,
         formData,
         {
           headers: { "Content-Type": "multipart/form-data" },
@@ -322,7 +326,7 @@ export const DataIngestion: React.FC = () => {
           <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
             <Tabs
               value={activeTab}
-              onChange={(e, newValue) => setActiveTab(newValue)}
+              onChange={(_e, newValue) => setActiveTab(newValue)}
             >
               <Tab label="Raw Data" />
               <Tab label="Analytics & Insights" />

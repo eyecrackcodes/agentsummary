@@ -480,6 +480,25 @@ def main():
                     (filtered_experienced_agents['Quality_Tier'].isin(selected_tiers))
                 ]
                 
+                # Global agent selection for drill-down analysis
+                st.subheader("🔍 Agent Focus")
+                focus_agent = st.selectbox(
+                    "Select agent for detailed analysis across all tabs:",
+                    options=["All Agents"] + list(filtered_agents['Agent'].unique()),
+                    help="This selection will highlight the chosen agent across all charts and analyses"
+                )
+                
+                # Create focused data for the selected agent
+                if focus_agent != "All Agents":
+                    focused_agent_data = filtered_agents[filtered_agents['Agent'] == focus_agent]
+                    if len(focused_agent_data) > 0:
+                        st.success(f"🎯 Focusing on: **{focus_agent}**")
+                    else:
+                        st.warning(f"No data found for {focus_agent}")
+                        focus_agent = "All Agents"
+                else:
+                    focused_agent_data = pd.DataFrame()
+                
             except Exception as e:
                 st.error(f"Error loading data: {str(e)}")
                 st.error(f"Error type: {type(e).__name__}")
@@ -639,21 +658,40 @@ def main():
             # Sort and filter agents
             top_performers = filtered_agents.nlargest(top_n, sort_metric) if not ascending else filtered_agents.nsmallest(top_n, sort_metric)
             
-            # Interactive chart with drill-down
+            # Interactive chart with drill-down and agent highlighting
             fig = make_subplots(specs=[[{"secondary_y": True}]])
+            
+            # Determine colors for bars (highlight selected agent)
+            bar_colors = []
+            for agent in top_performers['Agent']:
+                if focus_agent != "All Agents" and agent == focus_agent:
+                    bar_colors.append('rgba(255, 87, 108, 0.9)')  # Highlighted color
+                else:
+                    bar_colors.append('rgba(102, 126, 234, 0.8)')  # Default color
             
             fig.add_trace(
                 go.Bar(
                     x=top_performers['Agent'],
                     y=top_performers[sort_metric],
                     name=sort_metric,
-                    marker_color='rgba(102, 126, 234, 0.8)',
+                    marker_color=bar_colors,
                     hovertemplate="<b>%{x}</b><br>" +
                                 f"{sort_metric}: %{{y}}<br>" +
                                 "<extra></extra>"
                 ),
                 secondary_y=False,
             )
+            
+            # Determine colors for line markers (highlight selected agent)
+            line_colors = []
+            line_sizes = []
+            for agent in top_performers['Agent']:
+                if focus_agent != "All Agents" and agent == focus_agent:
+                    line_colors.append('#d32f2f')  # Highlighted color
+                    line_sizes.append(15)  # Larger size
+                else:
+                    line_colors.append('#f5576c')  # Default color
+                    line_sizes.append(10)  # Default size
             
             fig.add_trace(
                 go.Scatter(
@@ -662,7 +700,7 @@ def main():
                     mode='lines+markers',
                     name="Conversion Rate %",
                     line=dict(color='#f5576c', width=3),
-                    marker=dict(size=10, color='#f5576c'),
+                    marker=dict(size=line_sizes, color=line_colors),
                     hovertemplate="<b>%{x}</b><br>" +
                                 "Conversion Rate: %{y:.1f}%<br>" +
                                 "<extra></extra>"
@@ -673,8 +711,13 @@ def main():
             fig.update_xaxes(title_text="Agent", tickangle=45)
             fig.update_yaxes(title_text=sort_metric, secondary_y=False)
             fig.update_yaxes(title_text="Conversion Rate %", secondary_y=True)
+            
+            chart_title = f"Top {top_n} Agents by {sort_metric}"
+            if focus_agent != "All Agents":
+                chart_title += f" - Highlighting {focus_agent}"
+            
             fig.update_layout(
-                title=f"Top {top_n} Agents by {sort_metric}",
+                title=chart_title,
                 height=500,
                 hovermode='x unified',
                 plot_bgcolor='rgba(0,0,0,0)',
@@ -683,17 +726,21 @@ def main():
             
             st.plotly_chart(fig, use_container_width=True)
             
-            # Agent drill-down selection
+            # Agent drill-down analysis using global selection
             st.subheader("🔍 Agent Drill-Down Analysis")
             
-            selected_agent = st.selectbox(
-                "Select an agent for detailed analysis:",
-                options=top_performers['Agent'].tolist(),
-                help="Choose an agent to see detailed performance breakdown"
-            )
+            if focus_agent != "All Agents" and len(focused_agent_data) > 0:
+                agent_data = focused_agent_data.iloc[0]
+                st.info(f"📊 Showing detailed analysis for: **{focus_agent}** (selected in sidebar)")
+            elif len(top_performers) > 0:
+                # Default to top performer if no agent selected
+                agent_data = top_performers.iloc[0]
+                st.info(f"📊 Showing top performer: **{agent_data['Agent']}** (select an agent in sidebar for specific analysis)")
+            else:
+                agent_data = None
+                st.warning("No agent data available for analysis")
             
-            if selected_agent:
-                agent_data = top_performers[top_performers['Agent'] == selected_agent].iloc[0]
+            if agent_data is not None:
                 
                 # Agent detail cards
                 col1, col2, col3, col4 = st.columns(4)
@@ -832,23 +879,84 @@ def main():
                 )
                 st.plotly_chart(fig_risk, use_container_width=True)
             
-            # Underwriting mix scatter plot
-            fig_scatter = px.scatter(
-                filtered_agents,
-                x='Preferred %',
-                y='GI %',
-                size='# Submitted',
-                color='Quality_Tier',
-                hover_data=['Agent', 'Conversion_Rate', 'Free_Look_Rate'],
-                title="Underwriting Quality vs Risk Profile",
-                color_discrete_map={
-                    'Excellent': '#4caf50',
-                    'Good': '#2196f3',
-                    'Average': '#ff9800',
-                    'Poor': '#f44336'
-                }
-            )
-            fig_scatter.update_layout(height=500)
+            # Underwriting mix scatter plot with agent highlighting
+            if focus_agent != "All Agents" and len(focused_agent_data) > 0:
+                # Create scatter plot with highlighted agent
+                fig_scatter = go.Figure()
+                
+                # Add all other agents
+                other_agents = filtered_agents[filtered_agents['Agent'] != focus_agent]
+                for tier in other_agents['Quality_Tier'].unique():
+                    tier_data = other_agents[other_agents['Quality_Tier'] == tier]
+                    if len(tier_data) > 0:
+                        color_map = {'Excellent': '#4caf50', 'Good': '#2196f3', 'Average': '#ff9800', 'Poor': '#f44336'}
+                        fig_scatter.add_trace(go.Scatter(
+                            x=tier_data['Preferred %'],
+                            y=tier_data['GI %'],
+                            mode='markers',
+                            marker=dict(
+                                size=tier_data['# Submitted']/5,
+                                color=color_map.get(tier, '#cccccc'),
+                                opacity=0.4,
+                                line=dict(width=1, color='white')
+                            ),
+                            name=f"{tier} (Others)",
+                            text=tier_data['Agent'],
+                            hovertemplate="<b>%{text}</b><br>" +
+                                        "Preferred: %{x:.1f}%<br>" +
+                                        "GI: %{y:.1f}%<br>" +
+                                        "<extra></extra>"
+                        ))
+                
+                # Add focused agent with special highlighting
+                focused_data = focused_agent_data.iloc[0]
+                fig_scatter.add_trace(go.Scatter(
+                    x=[focused_data['Preferred %']],
+                    y=[focused_data['GI %']],
+                    mode='markers',
+                    marker=dict(
+                        size=max(20, focused_data['# Submitted']/3),
+                        color='red',
+                        symbol='star',
+                        line=dict(width=3, color='darkred')
+                    ),
+                    name=f"🎯 {focus_agent}",
+                    text=[focus_agent],
+                    hovertemplate="<b>🎯 %{text}</b><br>" +
+                                "Preferred: %{x:.1f}%<br>" +
+                                "GI: %{y:.1f}%<br>" +
+                                f"Submissions: {focused_data['# Submitted']:.0f}<br>" +
+                                f"Conversion: {focused_data['Conversion_Rate']:.1f}%<br>" +
+                                "<extra></extra>"
+                ))
+                
+                fig_scatter.update_layout(
+                    title=f"Underwriting Quality vs Risk Profile - Highlighting {focus_agent}",
+                    xaxis_title="Preferred %",
+                    yaxis_title="GI %",
+                    height=500,
+                    showlegend=True
+                )
+                
+            else:
+                # Standard scatter plot
+                fig_scatter = px.scatter(
+                    filtered_agents,
+                    x='Preferred %',
+                    y='GI %',
+                    size='# Submitted',
+                    color='Quality_Tier',
+                    hover_data=['Agent', 'Conversion_Rate', 'Free_Look_Rate'],
+                    title="Underwriting Quality vs Risk Profile",
+                    color_discrete_map={
+                        'Excellent': '#4caf50',
+                        'Good': '#2196f3',
+                        'Average': '#ff9800',
+                        'Poor': '#f44336'
+                    }
+                )
+                fig_scatter.update_layout(height=500)
+            
             st.plotly_chart(fig_scatter, use_container_width=True)
             
             # Agent cards
@@ -937,20 +1045,78 @@ def main():
                 st.plotly_chart(fig_risk_dist, use_container_width=True)
             
             with col2:
-                # Risk score vs submissions
-                fig_risk_scatter = px.scatter(
-                    risk_df,
-                    x='Submissions',
-                    y='Risk_Score',
-                    color='Risk_Level',
-                    hover_data=['Agent'],
-                    title="Risk Score vs Volume",
-                    color_discrete_map={
-                        'Low': '#4caf50',
-                        'Medium': '#ff9800',
-                        'High': '#f44336'
-                    }
-                )
+                # Risk score vs submissions with agent highlighting
+                if focus_agent != "All Agents" and focus_agent in risk_df['Agent'].values:
+                    # Create scatter plot with highlighted agent
+                    fig_risk_scatter = go.Figure()
+                    
+                    # Add all other agents
+                    other_risk_data = risk_df[risk_df['Agent'] != focus_agent]
+                    for risk_level in other_risk_data['Risk_Level'].unique():
+                        level_data = other_risk_data[other_risk_data['Risk_Level'] == risk_level]
+                        if len(level_data) > 0:
+                            color_map = {'Low': '#4caf50', 'Medium': '#ff9800', 'High': '#f44336'}
+                            fig_risk_scatter.add_trace(go.Scatter(
+                                x=level_data['Submissions'],
+                                y=level_data['Risk_Score'],
+                                mode='markers',
+                                marker=dict(
+                                    size=8,
+                                    color=color_map.get(risk_level, '#cccccc'),
+                                    opacity=0.4
+                                ),
+                                name=f"{risk_level} Risk (Others)",
+                                text=level_data['Agent'],
+                                hovertemplate="<b>%{text}</b><br>" +
+                                            "Submissions: %{x}<br>" +
+                                            "Risk Score: %{y}<br>" +
+                                            "<extra></extra>"
+                            ))
+                    
+                    # Add focused agent
+                    focused_risk_data = risk_df[risk_df['Agent'] == focus_agent].iloc[0]
+                    fig_risk_scatter.add_trace(go.Scatter(
+                        x=[focused_risk_data['Submissions']],
+                        y=[focused_risk_data['Risk_Score']],
+                        mode='markers',
+                        marker=dict(
+                            size=15,
+                            color='red',
+                            symbol='star',
+                            line=dict(width=3, color='darkred')
+                        ),
+                        name=f"🎯 {focus_agent}",
+                        text=[focus_agent],
+                        hovertemplate="<b>🎯 %{text}</b><br>" +
+                                    "Submissions: %{x}<br>" +
+                                    "Risk Score: %{y}<br>" +
+                                    f"Risk Level: {focused_risk_data['Risk_Level']}<br>" +
+                                    "<extra></extra>"
+                    ))
+                    
+                    fig_risk_scatter.update_layout(
+                        title=f"Risk Score vs Volume - Highlighting {focus_agent}",
+                        xaxis_title="Submissions",
+                        yaxis_title="Risk Score",
+                        showlegend=True
+                    )
+                    
+                else:
+                    # Standard scatter plot
+                    fig_risk_scatter = px.scatter(
+                        risk_df,
+                        x='Submissions',
+                        y='Risk_Score',
+                        color='Risk_Level',
+                        hover_data=['Agent'],
+                        title="Risk Score vs Volume",
+                        color_discrete_map={
+                            'Low': '#4caf50',
+                            'Medium': '#ff9800',
+                            'High': '#f44336'
+                        }
+                    )
+                
                 st.plotly_chart(fig_risk_scatter, use_container_width=True)
             
             # High-risk agents table
@@ -968,6 +1134,57 @@ def main():
         
         with tab4:
             st.subheader("📊 Statistical Insights & Explanations")
+            
+            # Show focused agent analysis if selected
+            if focus_agent != "All Agents" and len(focused_agent_data) > 0:
+                st.markdown(f"### 🎯 Focused Analysis: {focus_agent}")
+                
+                focused_data = focused_agent_data.iloc[0]
+                
+                col1, col2, col3, col4 = st.columns(4)
+                
+                with col1:
+                    conv_percentile = (filtered_agents['Conversion_Rate'] < focused_data['Conversion_Rate']).mean() * 100
+                    st.markdown(f"""
+                    <div class="insight-card">
+                        <h4>🎯 Conversion Rate</h4>
+                        <h3>{focused_data['Conversion_Rate']:.1f}%</h3>
+                        <p>Better than {conv_percentile:.0f}% of agents</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    qual_percentile = (filtered_agents['Quality_Score'] < focused_data['Quality_Score']).mean() * 100
+                    st.markdown(f"""
+                    <div class="insight-card">
+                        <h4>⭐ Quality Score</h4>
+                        <h3>{focused_data['Quality_Score']:.1f}</h3>
+                        <p>Better than {qual_percentile:.0f}% of agents</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col3:
+                    sub_percentile = (filtered_agents['# Submitted'] < focused_data['# Submitted']).mean() * 100
+                    st.markdown(f"""
+                    <div class="insight-card">
+                        <h4>📋 Submissions</h4>
+                        <h3>{focused_data['# Submitted']:.0f}</h3>
+                        <p>Better than {sub_percentile:.0f}% of agents</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col4:
+                    # Free look is reverse (lower is better)
+                    free_look_percentile = (filtered_agents['Free_Look_Rate'] > focused_data['Free_Look_Rate']).mean() * 100
+                    st.markdown(f"""
+                    <div class="insight-card">
+                        <h4>⚠️ Free Look Rate</h4>
+                        <h3>{focused_data['Free_Look_Rate']:.1f}%</h3>
+                        <p>Better than {free_look_percentile:.0f}% of agents</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                st.markdown("---")
             
             # Metric explanations
             st.markdown("""

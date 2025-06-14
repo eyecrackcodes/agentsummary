@@ -16,7 +16,6 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  LinearProgress,
   FormControl,
   InputLabel,
   Select,
@@ -25,13 +24,11 @@ import {
   Checkbox,
   ListItemText as MuiListItemText,
   Button,
-  ButtonGroup,
   TextField,
   Autocomplete,
   Stack,
 } from "@mui/material";
 import {
-  BarChart,
   Bar,
   XAxis,
   YAxis,
@@ -39,21 +36,14 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  LineChart,
   Line,
   PieChart,
   Pie,
   Cell,
-  ScatterChart,
-  Scatter,
-  AreaChart,
-  Area,
   ComposedChart,
 } from "recharts";
 import { AgentSummary } from "../../../shared/agentSummary";
-import TrendingUpIcon from "@mui/icons-material/TrendingUp";
-import TrendingDownIcon from "@mui/icons-material/TrendingDown";
-import WarningIcon from "@mui/icons-material/Warning";
+
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import InsightsIcon from "@mui/icons-material/Insights";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -61,21 +51,10 @@ import TimelineIcon from "@mui/icons-material/Timeline";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import ClearIcon from "@mui/icons-material/Clear";
-import PersonIcon from "@mui/icons-material/Person";
-import DateRangeIcon from "@mui/icons-material/DateRange";
 
 interface AnalyticsDashboardProps {
   data: AgentSummary[];
 }
-
-const COLORS = [
-  "#8884d8",
-  "#82ca9d",
-  "#ffc658",
-  "#ff7300",
-  "#8dd1e1",
-  "#d084d0",
-];
 
 // Minimum data thresholds for meaningful analysis
 const DATA_THRESHOLDS = {
@@ -212,7 +191,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ data }) => {
             gradedPercent: 0,
             giPercent: 0,
             ccPercent: 0,
-            issuedAndPaid: 0,
+            issuedPaidPlus: 0,
             preLapseCases: 0,
             weightedSmoker: 0,
             weightedPreferred: 0,
@@ -228,7 +207,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ data }) => {
         total.submitted += item.submitted;
         total.freeLooked += item.freeLooked;
         total.preLapseCases += item.preLapseCases;
-        total.issuedAndPaid += item.issuedAndPaid;
+        total.issuedPaidPlus += item.issuedPaidPlus;
 
         // Weight percentages by submissions
         total.weightedSmoker += item.smokerPercent * item.submitted;
@@ -261,7 +240,9 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ data }) => {
         }
         total.ccPercent =
           total.submitted > 0
-            ? Number(((total.issuedAndPaid / total.submitted) * 100).toFixed(1))
+            ? Number(
+                ((total.issuedPaidPlus / total.submitted) * 100).toFixed(1)
+              )
             : 0;
       });
 
@@ -1395,9 +1376,9 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ data }) => {
                           fontWeight="bold"
                           gutterBottom
                         >
-                          {change.agent}
+                          {change?.agent || "Unknown Agent"}
                         </Typography>
-                        {change.changes.map((ch, idx) => (
+                        {change?.changes?.map((ch, idx) => (
                           <Box key={idx} sx={{ mb: 1 }}>
                             <Typography variant="body2" color="text.secondary">
                               {ch.fromWeek} → {ch.toWeek}

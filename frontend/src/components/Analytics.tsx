@@ -9,7 +9,6 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  LineChart,
   Line,
   PieChart,
   Pie,
@@ -316,7 +315,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ data }) => {
                       fill="#8884d8"
                       dataKey="value"
                     >
-                      {ratingDistribution.map((entry, index) => (
+                      {ratingDistribution.map((_entry, index) => (
                         <Cell
                           key={`cell-${index}`}
                           fill={COLORS[index % COLORS.length]}
@@ -360,8 +359,8 @@ export const Analytics: React.FC<AnalyticsProps> = ({ data }) => {
                     <Tooltip
                       cursor={{ strokeDasharray: "3 3" }}
                       formatter={(value, name) => [
-                        `${value}${name.includes("Rate") ? "%" : "%"}`,
-                        name.includes("Rate")
+                        `${value}${String(name).includes("Rate") ? "%" : "%"}`,
+                        String(name).includes("Rate")
                           ? "Conversion Rate"
                           : "Avg Issued & Paid",
                       ]}
