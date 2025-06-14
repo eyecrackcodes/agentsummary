@@ -9,6 +9,8 @@ import {
   ThemeProvider,
   createTheme,
   CssBaseline,
+  Button,
+  Alert,
 } from "@mui/material";
 import FileUpload from "./components/FileUpload";
 import DataGrid from "./components/DataGrid";
@@ -16,6 +18,7 @@ import AnalyticsDashboard from "./components/AnalyticsDashboard";
 import StatisticalSummary from "./components/StatisticalSummary";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { AgentSummary } from "../../shared/agentSummary";
+import { demoData } from "./demoData";
 
 const theme = createTheme({
   palette: {
@@ -186,6 +189,27 @@ function App() {
 
             <TabPanel value={tabValue} index={0}>
               <Box sx={{ p: 3 }}>
+                {data.length === 0 && (
+                  <Alert severity="info" sx={{ mb: 3 }}>
+                    <Box
+                      display="flex"
+                      justifyContent="space-between"
+                      alignItems="center"
+                    >
+                      <Typography>
+                        Upload your agent performance data or try the demo to
+                        explore features
+                      </Typography>
+                      <Button
+                        variant="outlined"
+                        onClick={() => handleDataUpload(demoData)}
+                        sx={{ ml: 2 }}
+                      >
+                        Load Demo Data
+                      </Button>
+                    </Box>
+                  </Alert>
+                )}
                 <FileUpload onDataUpload={handleDataUpload} />
                 {data.length > 0 && (
                   <Box sx={{ mt: 4 }}>
