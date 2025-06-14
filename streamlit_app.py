@@ -6,6 +6,12 @@ from plotly.subplots import make_subplots
 import numpy as np
 from datetime import datetime
 import io
+import logging
+import traceback
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Page configuration
 st.set_page_config(
@@ -45,6 +51,9 @@ st.markdown("""
 def process_agent_data(df):
     """Process uploaded agent data and calculate metrics"""
     
+    logger.info(f"Processing agent data with {len(df)} rows and {len(df.columns)} columns")
+    logger.info(f"Columns: {list(df.columns)}")
+    
     # Ensure numeric columns are properly typed
     numeric_columns = [
         '# 1st Quotes', '# 2nd Quotes', '# Submitted', '# Free look',
@@ -53,7 +62,11 @@ def process_agent_data(df):
     
     for col in numeric_columns:
         if col in df.columns:
+            original_type = df[col].dtype
             df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+            logger.info(f"Converted column '{col}' from {original_type} to {df[col].dtype}")
+        else:
+            logger.warning(f"Expected column '{col}' not found in data")
     
     # Data quality thresholds
     MIN_TOTAL_QUOTES = 50
@@ -110,18 +123,32 @@ def process_agent_data(df):
     experienced_agents['Avg_Weekly_Submissions'] = experienced_agents['# Submitted'] / experienced_agents['Weeks_Active']
     
     # Quality tiers
+    logger.info(f"Creating Quality_Tier for {len(experienced_agents)} agents")
+    logger.info(f"Preferred % range: {experienced_agents['Preferred %'].min():.1f}% - {experienced_agents['Preferred %'].max():.1f}%")
+    
     experienced_agents['Quality_Tier'] = pd.cut(
         experienced_agents['Preferred %'],
         bins=[0, 20, 30, 40, 100],
         labels=['Poor', 'Average', 'Good', 'Excellent']
     )
     
+    # Log Quality_Tier distribution
+    tier_counts = experienced_agents['Quality_Tier'].value_counts()
+    logger.info(f"Quality_Tier distribution: {tier_counts.to_dict()}")
+    
     # Risk profiles
+    logger.info(f"Creating Risk_Profile for {len(experienced_agents)} agents")
+    logger.info(f"GI % range: {experienced_agents['GI %'].min():.1f}% - {experienced_agents['GI %'].max():.1f}%")
+    
     experienced_agents['Risk_Profile'] = pd.cut(
         experienced_agents['GI %'],
         bins=[0, 20, 35, 100],
         labels=['Low Risk', 'Medium Risk', 'High Risk']
     )
+    
+    # Log Risk_Profile distribution
+    risk_counts = experienced_agents['Risk_Profile'].value_counts()
+    logger.info(f"Risk_Profile distribution: {risk_counts.to_dict()}")
     
     return experienced_agents, individual_data
 
@@ -189,10 +216,17 @@ def main():
         if uploaded_file is not None:
             # Load data
             try:
+                logger.info(f"Loading file: {uploaded_file.name}")
+                
                 if uploaded_file.name.endswith('.csv'):
                     df = pd.read_csv(uploaded_file)
+                    logger.info("Loaded CSV file successfully")
                 else:
                     df = pd.read_excel(uploaded_file, sheet_name='agent summary')
+                    logger.info("Loaded Excel file successfully")
+                
+                logger.info(f"Initial data shape: {df.shape}")
+                logger.info(f"Initial columns: {list(df.columns)}")
                 
                 # Convert numeric columns to proper data types
                 numeric_columns = [
@@ -202,9 +236,12 @@ def main():
                 
                 for col in numeric_columns:
                     if col in df.columns:
+                        original_type = df[col].dtype
                         df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+                        logger.info(f"Main: Converted '{col}' from {original_type} to {df[col].dtype}")
                 
                 st.success(f"✅ Loaded {len(df)} records")
+                logger.info(f"Successfully processed {len(df)} records")
                 
                 # Debug: Show data types
                 with st.expander("🔍 Debug: Data Types", expanded=False):
@@ -212,6 +249,17 @@ def main():
                     st.write(df.dtypes)
                     st.write("Sample data:")
                     st.write(df.head(3))
+                
+                # Console logs display
+                with st.expander("📋 Console Logs", expanded=False):
+                    st.info("Check your browser's developer console (F12) for detailed logs, or check the Streamlit Cloud logs in 'Manage app'")
+                    
+                    # Display some key info here
+                    st.write("**Key Processing Info:**")
+                    st.write(f"- File loaded: {uploaded_file.name}")
+                    st.write(f"- Data shape: {df.shape}")
+                    st.write(f"- Unique weeks: {len(df['Week'].unique()) if 'Week' in df.columns else 'N/A'}")
+                    st.write(f"- Unique agents: {len(df['Agent'].unique()) if 'Agent' in df.columns else 'N/A'}")
                 
                 # Process data
                 experienced_agents, individual_data = process_agent_data(df)
@@ -531,24 +579,51 @@ def main():
             # Agent cards
             st.subheader("Agent Performance Cards")
             
+            logger.info(f"Creating agent cards for {len(filtered_agents.head(12))} agents")
+            
             cols = st.columns(3)
             for idx, (_, agent) in enumerate(filtered_agents.head(12).iterrows()):
                 col_idx = idx % 3
                 
                 with cols[col_idx]:
-                    tier_class = f"quality-tier-{agent['Quality_Tier'].lower()}"
+                    # Safe handling of Quality_Tier
+                    try:
+                        agent_name = agent.get('Agent', f'Agent_{idx}')
+                        logger.info(f"Processing agent card for: {agent_name}")
+                        logger.info(f"Quality_Tier value: {agent['Quality_Tier']} (type: {type(agent['Quality_Tier'])})")
+                        
+                        quality_tier = str(agent['Quality_Tier']).lower() if pd.notna(agent['Quality_Tier']) else 'unknown'
+                        tier_class = f"quality-tier-{quality_tier}"
+                        
+                        logger.info(f"Successfully processed Quality_Tier for {agent_name}: {quality_tier}")
+                        
+                    except Exception as e:
+                        logger.error(f"Error processing Quality_Tier for agent {agent.get('Agent', 'Unknown')}: {e}")
+                        logger.error(f"Traceback: {traceback.format_exc()}")
+                        st.error(f"Error processing Quality_Tier for agent {agent.get('Agent', 'Unknown')}: {e}")
+                        tier_class = "quality-tier-unknown"
                     
-                    st.markdown(f"""
-                    <div class="{tier_class}" style="padding: 1rem; margin: 0.5rem 0; border-radius: 8px; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                        <h4>{agent['Agent']}</h4>
-                        <p><strong>Quality Tier:</strong> {agent['Quality_Tier']}</p>
-                        <p><strong>Submissions:</strong> {agent['# Submitted']}</p>
-                        <p><strong>Preferred:</strong> {agent['Preferred %']:.1f}%</p>
-                        <p><strong>GI:</strong> {agent['GI %']:.1f}%</p>
-                        <p><strong>Free Look:</strong> {agent['Free_Look_Rate']:.1f}%</p>
-                        <p><strong>Risk Profile:</strong> {agent['Risk_Profile']}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
+                    # Safe handling of all fields
+                    try:
+                        agent_name = str(agent.get('Agent', 'Unknown'))
+                        quality_tier_display = str(agent['Quality_Tier']) if pd.notna(agent['Quality_Tier']) else 'Unknown'
+                        risk_profile_display = str(agent['Risk_Profile']) if pd.notna(agent['Risk_Profile']) else 'Unknown'
+                        
+                        st.markdown(f"""
+                        <div class="{tier_class}" style="padding: 1rem; margin: 0.5rem 0; border-radius: 8px; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                            <h4>{agent_name}</h4>
+                            <p><strong>Quality Tier:</strong> {quality_tier_display}</p>
+                            <p><strong>Submissions:</strong> {agent['# Submitted']:.0f}</p>
+                            <p><strong>Preferred:</strong> {agent['Preferred %']:.1f}%</p>
+                            <p><strong>GI:</strong> {agent['GI %']:.1f}%</p>
+                            <p><strong>Free Look:</strong> {agent['Free_Look_Rate']:.1f}%</p>
+                            <p><strong>Risk Profile:</strong> {risk_profile_display}</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                    except Exception as e:
+                        logger.error(f"Error creating agent card HTML for {agent.get('Agent', 'Unknown')}: {e}")
+                        st.error(f"Error displaying agent card for {agent.get('Agent', 'Unknown')}")
         
         with tab3:
             st.subheader("⚠️ Risk Analysis & Coaching Priorities")
