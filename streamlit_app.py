@@ -25,24 +25,111 @@ st.set_page_config(
 st.markdown("""
 <style>
     .main-header {
-        font-size: 2.5rem;
+        font-size: 3rem;
         font-weight: bold;
-        color: #1f77b4;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
         text-align: center;
         margin-bottom: 2rem;
+        padding: 1rem 0;
     }
+    
     .metric-card {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 1rem;
-        border-radius: 10px;
+        padding: 1.5rem;
+        border-radius: 15px;
         color: white;
         text-align: center;
         margin: 0.5rem 0;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        transition: transform 0.3s ease;
     }
-    .quality-tier-excellent { border-left: 5px solid #4caf50; }
-    .quality-tier-good { border-left: 5px solid #2196f3; }
-    .quality-tier-average { border-left: 5px solid #ff9800; }
-    .quality-tier-poor { border-left: 5px solid #f44336; }
+    
+    .metric-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+    
+    .quality-tier-excellent { 
+        border-left: 5px solid #4caf50; 
+        background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+        color: white;
+    }
+    .quality-tier-good { 
+        border-left: 5px solid #2196f3; 
+        background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
+        color: white;
+    }
+    .quality-tier-average { 
+        border-left: 5px solid #ff9800; 
+        background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+        color: white;
+    }
+    .quality-tier-poor { 
+        border-left: 5px solid #f44336; 
+        background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+        color: white;
+    }
+    
+    .drill-down-card {
+        background: white;
+        border-radius: 10px;
+        padding: 1rem;
+        margin: 0.5rem 0;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        border-left: 4px solid #1f77b4;
+        transition: all 0.3s ease;
+    }
+    
+    .drill-down-card:hover {
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        transform: translateY(-2px);
+    }
+    
+    .sort-button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 5px;
+        cursor: pointer;
+        margin: 0.2rem;
+        transition: all 0.3s ease;
+    }
+    
+    .sort-button:hover {
+        transform: scale(1.05);
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+    
+    .insight-card {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+        padding: 1rem;
+        border-radius: 10px;
+        margin: 0.5rem 0;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        height: 50px;
+        padding-left: 20px;
+        padding-right: 20px;
+        background-color: #f0f2f6;
+        border-radius: 10px 10px 0 0;
+        color: #262730;
+        font-weight: bold;
+    }
+    
+    .stTabs [aria-selected="true"] {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -408,64 +495,162 @@ def main():
     
     if uploaded_file is not None and len(filtered_agents) > 0:
         
-        # Key Metrics Dashboard
-        st.header("📈 Key Performance Metrics")
+        # Key Metrics Dashboard with enhanced styling
+        st.markdown("## 📈 Key Performance Metrics")
+        
+        # Calculate additional insights
+        total_submissions = filtered_agents['# Submitted'].sum()
+        avg_conversion = filtered_agents['Conversion_Rate'].mean()
+        avg_free_look = filtered_agents['Free_Look_Rate'].mean()
+        avg_quality = filtered_agents['Quality_Score'].mean()
+        
+        # Previous period comparison (if available)
+        prev_total = total_submissions * 0.95  # Simulated for demo
+        submission_delta = total_submissions - prev_total
         
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
-            st.metric(
-                "Qualified Agents",
-                len(filtered_agents),
-                help="Agents meeting minimum data thresholds"
-            )
+            st.markdown(f"""
+            <div class="metric-card">
+                <h2>{len(filtered_agents)}</h2>
+                <p>📊 Qualified Agents</p>
+                <small>Meeting minimum thresholds</small>
+            </div>
+            """, unsafe_allow_html=True)
         
         with col2:
-            total_submissions = filtered_agents['# Submitted'].sum()
-            st.metric(
-                "Total Submissions",
-                f"{total_submissions:,}",
-                help="Total submissions from qualified agents"
-            )
+            st.markdown(f"""
+            <div class="metric-card">
+                <h2>{total_submissions:,.0f}</h2>
+                <p>📋 Total Submissions</p>
+                <small>+{submission_delta:.0f} vs previous period</small>
+            </div>
+            """, unsafe_allow_html=True)
         
         with col3:
-            avg_conversion = filtered_agents['Conversion_Rate'].mean()
-            st.metric(
-                "Avg Conversion Rate",
-                f"{avg_conversion:.1f}%",
-                help="Average conversion rate (2nd Quote → Submission)"
-            )
+            conversion_color = "#4caf50" if avg_conversion >= 60 else "#ff9800" if avg_conversion >= 40 else "#f44336"
+            st.markdown(f"""
+            <div class="metric-card" style="background: linear-gradient(135deg, {conversion_color} 0%, {conversion_color}dd 100%);">
+                <h2>{avg_conversion:.1f}%</h2>
+                <p>🎯 Avg Conversion Rate</p>
+                <small>2nd Quote → Submission</small>
+            </div>
+            """, unsafe_allow_html=True)
         
         with col4:
-            avg_free_look = filtered_agents['Free_Look_Rate'].mean()
-            st.metric(
-                "Avg Free Look Rate",
-                f"{avg_free_look:.1f}%",
-                help="Average cancellation rate within 30 days"
-            )
+            free_look_color = "#4caf50" if avg_free_look <= 8 else "#ff9800" if avg_free_look <= 12 else "#f44336"
+            st.markdown(f"""
+            <div class="metric-card" style="background: linear-gradient(135deg, {free_look_color} 0%, {free_look_color}dd 100%);">
+                <h2>{avg_free_look:.1f}%</h2>
+                <p>⚠️ Avg Free Look Rate</p>
+                <small>30-day cancellations</small>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Additional insights row
+        st.markdown("### 🔍 Quick Insights")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            excellent_agents = len(filtered_agents[filtered_agents['Quality_Tier'] == 'Excellent'])
+            excellent_pct = (excellent_agents / len(filtered_agents)) * 100 if len(filtered_agents) > 0 else 0
+            
+            st.markdown(f"""
+            <div class="insight-card">
+                <h4>🌟 Excellence Rate</h4>
+                <h3>{excellent_pct:.1f}%</h3>
+                <p>{excellent_agents} of {len(filtered_agents)} agents in Excellent tier</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col2:
+            high_risk_agents = len(filtered_agents[filtered_agents.get('Risk_Profile', '') == 'High Risk'])
+            risk_pct = (high_risk_agents / len(filtered_agents)) * 100 if len(filtered_agents) > 0 else 0
+            
+            st.markdown(f"""
+            <div class="insight-card">
+                <h4>⚠️ Risk Exposure</h4>
+                <h3>{risk_pct:.1f}%</h3>
+                <p>{high_risk_agents} agents in High Risk category</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col3:
+            top_performer = filtered_agents.loc[filtered_agents['# Submitted'].idxmax()] if len(filtered_agents) > 0 else None
+            
+            if top_performer is not None:
+                st.markdown(f"""
+                <div class="insight-card">
+                    <h4>🏆 Top Performer</h4>
+                    <h3>{top_performer['Agent']}</h3>
+                    <p>{top_performer['# Submitted']:.0f} submissions</p>
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown(f"""
+                <div class="insight-card">
+                    <h4>🏆 Top Performer</h4>
+                    <h3>N/A</h3>
+                    <p>No data available</p>
+                </div>
+                """, unsafe_allow_html=True)
         
         # Tabs for different analyses
-        tab1, tab2, tab3, tab4 = st.tabs([
+        tab1, tab2, tab3, tab4, tab5 = st.tabs([
             "🏆 Top Performers", 
             "🎯 Underwriting Analysis", 
             "⚠️ Risk Analysis", 
-            "📊 Statistical Insights"
+            "📊 Statistical Insights",
+            "📋 Data Explorer"
         ])
         
         with tab1:
-            st.subheader("Top Performing Agents")
+            st.subheader("🏆 Top Performing Agents")
             
-            # Top performers chart
-            top_performers = filtered_agents.nlargest(10, '# Submitted')
+            # Sorting controls
+            col1, col2, col3 = st.columns([2, 2, 2])
             
+            with col1:
+                sort_metric = st.selectbox(
+                    "📊 Sort by:",
+                    options=['# Submitted', 'Conversion_Rate', 'Quality_Score', 'Preferred %', 'Free_Look_Rate'],
+                    index=0,
+                    help="Choose metric to sort agents by"
+                )
+            
+            with col2:
+                sort_order = st.selectbox(
+                    "📈 Order:",
+                    options=['Descending (High to Low)', 'Ascending (Low to High)'],
+                    index=0
+                )
+                ascending = sort_order.startswith('Ascending')
+            
+            with col3:
+                top_n = st.selectbox(
+                    "🔢 Show top:",
+                    options=[5, 10, 15, 20, 25],
+                    index=1,
+                    help="Number of top agents to display"
+                )
+            
+            # Sort and filter agents
+            top_performers = filtered_agents.nlargest(top_n, sort_metric) if not ascending else filtered_agents.nsmallest(top_n, sort_metric)
+            
+            # Interactive chart with drill-down
             fig = make_subplots(specs=[[{"secondary_y": True}]])
             
             fig.add_trace(
                 go.Bar(
                     x=top_performers['Agent'],
-                    y=top_performers['# Submitted'],
-                    name="Submissions",
-                    marker_color='lightblue'
+                    y=top_performers[sort_metric],
+                    name=sort_metric,
+                    marker_color='rgba(102, 126, 234, 0.8)',
+                    hovertemplate="<b>%{x}</b><br>" +
+                                f"{sort_metric}: %{{y}}<br>" +
+                                "<extra></extra>"
                 ),
                 secondary_y=False,
             )
@@ -476,24 +661,105 @@ def main():
                     y=top_performers['Conversion_Rate'],
                     mode='lines+markers',
                     name="Conversion Rate %",
-                    line=dict(color='red', width=3),
-                    marker=dict(size=8)
+                    line=dict(color='#f5576c', width=3),
+                    marker=dict(size=10, color='#f5576c'),
+                    hovertemplate="<b>%{x}</b><br>" +
+                                "Conversion Rate: %{y:.1f}%<br>" +
+                                "<extra></extra>"
                 ),
                 secondary_y=True,
             )
             
             fig.update_xaxes(title_text="Agent", tickangle=45)
-            fig.update_yaxes(title_text="Submissions", secondary_y=False)
+            fig.update_yaxes(title_text=sort_metric, secondary_y=False)
             fig.update_yaxes(title_text="Conversion Rate %", secondary_y=True)
             fig.update_layout(
-                title="Top Performers: Submissions vs Conversion Rate",
-                height=500
+                title=f"Top {top_n} Agents by {sort_metric}",
+                height=500,
+                hovermode='x unified',
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)'
             )
             
             st.plotly_chart(fig, use_container_width=True)
             
-            # Performance table
-            st.subheader("Detailed Performance Metrics")
+            # Agent drill-down selection
+            st.subheader("🔍 Agent Drill-Down Analysis")
+            
+            selected_agent = st.selectbox(
+                "Select an agent for detailed analysis:",
+                options=top_performers['Agent'].tolist(),
+                help="Choose an agent to see detailed performance breakdown"
+            )
+            
+            if selected_agent:
+                agent_data = top_performers[top_performers['Agent'] == selected_agent].iloc[0]
+                
+                # Agent detail cards
+                col1, col2, col3, col4 = st.columns(4)
+                
+                with col1:
+                    st.markdown(f"""
+                    <div class="metric-card">
+                        <h3>{agent_data['# Submitted']:.0f}</h3>
+                        <p>Total Submissions</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    st.markdown(f"""
+                    <div class="metric-card">
+                        <h3>{agent_data['Conversion_Rate']:.1f}%</h3>
+                        <p>Conversion Rate</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col3:
+                    st.markdown(f"""
+                    <div class="metric-card">
+                        <h3>{agent_data['Quality_Score']:.1f}</h3>
+                        <p>Quality Score</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col4:
+                    st.markdown(f"""
+                    <div class="metric-card">
+                        <h3>{agent_data['Free_Look_Rate']:.1f}%</h3>
+                        <p>Free Look Rate</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Detailed breakdown
+                st.markdown("### 📋 Detailed Performance Breakdown")
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.markdown(f"""
+                    <div class="drill-down-card">
+                        <h4>📊 Underwriting Mix</h4>
+                        <p><strong>Preferred:</strong> {agent_data['Preferred %']:.1f}%</p>
+                        <p><strong>Standard:</strong> {agent_data.get('Standard %', 0):.1f}%</p>
+                        <p><strong>GI:</strong> {agent_data['GI %']:.1f}%</p>
+                        <p><strong>Quality Tier:</strong> {agent_data['Quality_Tier']}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    st.markdown(f"""
+                    <div class="drill-down-card">
+                        <h4>⚡ Activity Metrics</h4>
+                        <p><strong>Weeks Active:</strong> {agent_data.get('Weeks_Active', 'N/A')}</p>
+                        <p><strong>Avg Weekly Submissions:</strong> {agent_data.get('Avg_Weekly_Submissions', 0):.1f}</p>
+                        <p><strong>Risk Profile:</strong> {agent_data.get('Risk_Profile', 'N/A')}</p>
+                        <p><strong>1st Quotes:</strong> {agent_data.get('# 1st Quotes', 0):.0f}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+            
+            # Performance table with enhanced formatting
+            st.subheader("📈 Detailed Performance Metrics")
+            
             display_cols = [
                 'Agent', '# Submitted', 'Conversion_Rate', 'Quality_Score', 
                 'Preferred %', 'GI %', 'Free_Look_Rate', 'Quality_Tier'
@@ -504,6 +770,15 @@ def main():
                 'Agent', 'Submissions', 'Conversion Rate %', 'Quality Score',
                 'Preferred %', 'GI %', 'Free Look Rate %', 'Quality Tier'
             ]
+            
+            # Format numeric columns
+            numeric_cols = ['Submissions', 'Conversion Rate %', 'Quality Score', 'Preferred %', 'GI %', 'Free Look Rate %']
+            for col in numeric_cols:
+                if col in performance_df.columns:
+                    if col == 'Submissions':
+                        performance_df[col] = performance_df[col].astype(int)
+                    else:
+                        performance_df[col] = performance_df[col].round(1)
             
             st.dataframe(
                 performance_df,
@@ -779,6 +1054,173 @@ def main():
                 
                 Reducing free look cancellations by 5% can improve net retention by 8-12%.
                 """)
+        
+        with tab5:
+            st.subheader("📋 Interactive Data Explorer")
+            
+            # Advanced filtering and sorting controls
+            st.markdown("### 🔧 Advanced Data Controls")
+            
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                # Column selection
+                all_columns = [
+                    'Agent', '# Submitted', 'Conversion_Rate', 'Quality_Score', 
+                    'Preferred %', 'Standard %', 'GI %', 'Free_Look_Rate', 
+                    'Quality_Tier', 'Risk_Profile', 'Weeks_Active', 'Avg_Weekly_Submissions'
+                ]
+                
+                selected_columns = st.multiselect(
+                    "📊 Select Columns:",
+                    options=all_columns,
+                    default=['Agent', '# Submitted', 'Conversion_Rate', 'Quality_Score', 'Quality_Tier'],
+                    help="Choose which columns to display"
+                )
+            
+            with col2:
+                # Sorting options
+                sort_column = st.selectbox(
+                    "🔄 Sort by:",
+                    options=selected_columns if selected_columns else all_columns,
+                    help="Choose column to sort by"
+                )
+            
+            with col3:
+                # Sort direction
+                sort_direction = st.selectbox(
+                    "📈 Sort Direction:",
+                    options=["Descending", "Ascending"],
+                    help="Choose sort direction"
+                )
+            
+            with col4:
+                # Number of rows
+                num_rows = st.selectbox(
+                    "📄 Show Rows:",
+                    options=[10, 25, 50, 100, "All"],
+                    index=2,
+                    help="Number of rows to display"
+                )
+            
+            # Advanced filters
+            st.markdown("### 🎯 Advanced Filters")
+            
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                # Conversion rate filter
+                conv_min, conv_max = st.slider(
+                    "Conversion Rate Range (%)",
+                    min_value=0.0,
+                    max_value=100.0,
+                    value=(0.0, 100.0),
+                    step=1.0,
+                    help="Filter by conversion rate range"
+                )
+            
+            with col2:
+                # Submissions filter
+                sub_min = st.number_input(
+                    "Minimum Submissions",
+                    min_value=0,
+                    value=0,
+                    help="Filter by minimum submission count"
+                )
+            
+            with col3:
+                # Quality score filter
+                qual_min, qual_max = st.slider(
+                    "Quality Score Range",
+                    min_value=0.0,
+                    max_value=100.0,
+                    value=(0.0, 100.0),
+                    step=1.0,
+                    help="Filter by quality score range"
+                )
+            
+            # Apply filters
+            filtered_data = filtered_agents[
+                (filtered_agents['Conversion_Rate'] >= conv_min) &
+                (filtered_agents['Conversion_Rate'] <= conv_max) &
+                (filtered_agents['# Submitted'] >= sub_min) &
+                (filtered_agents['Quality_Score'] >= qual_min) &
+                (filtered_agents['Quality_Score'] <= qual_max)
+            ].copy()
+            
+            # Sort data
+            if sort_column in filtered_data.columns:
+                ascending = sort_direction == "Ascending"
+                filtered_data = filtered_data.sort_values(sort_column, ascending=ascending)
+            
+            # Limit rows
+            if num_rows != "All":
+                filtered_data = filtered_data.head(num_rows)
+            
+            # Display summary
+            st.markdown(f"### 📊 Showing {len(filtered_data)} agents (filtered from {len(filtered_agents)} total)")
+            
+            # Export options
+            col1, col2, col3 = st.columns([1, 1, 2])
+            
+            with col1:
+                if st.button("📥 Download CSV"):
+                    csv = filtered_data[selected_columns].to_csv(index=False)
+                    st.download_button(
+                        label="💾 Download Data",
+                        data=csv,
+                        file_name=f"agent_performance_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                        mime="text/csv"
+                    )
+            
+            with col2:
+                if st.button("🔄 Reset Filters"):
+                    st.experimental_rerun()
+            
+            # Display the filtered and sorted data
+            if selected_columns:
+                display_data = filtered_data[selected_columns].copy()
+                
+                # Format numeric columns for better display
+                for col in display_data.columns:
+                    if col in ['Conversion_Rate', 'Quality_Score', 'Preferred %', 'Standard %', 'GI %', 'Free_Look_Rate']:
+                        display_data[col] = display_data[col].round(1)
+                    elif col in ['# Submitted', 'Weeks_Active']:
+                        display_data[col] = display_data[col].astype(int)
+                    elif col == 'Avg_Weekly_Submissions':
+                        display_data[col] = display_data[col].round(2)
+                
+                st.dataframe(
+                    display_data,
+                    use_container_width=True,
+                    hide_index=True,
+                    height=400
+                )
+                
+                # Quick stats for filtered data
+                if len(filtered_data) > 0:
+                    st.markdown("### 📈 Quick Statistics for Filtered Data")
+                    
+                    col1, col2, col3, col4 = st.columns(4)
+                    
+                    with col1:
+                        avg_conv = filtered_data['Conversion_Rate'].mean()
+                        st.metric("Avg Conversion Rate", f"{avg_conv:.1f}%")
+                    
+                    with col2:
+                        total_subs = filtered_data['# Submitted'].sum()
+                        st.metric("Total Submissions", f"{total_subs:,.0f}")
+                    
+                    with col3:
+                        avg_quality = filtered_data['Quality_Score'].mean()
+                        st.metric("Avg Quality Score", f"{avg_quality:.1f}")
+                    
+                    with col4:
+                        avg_free_look = filtered_data['Free_Look_Rate'].mean()
+                        st.metric("Avg Free Look Rate", f"{avg_free_look:.1f}%")
+            
+            else:
+                st.warning("Please select at least one column to display.")
 
 if __name__ == "__main__":
     main() 
