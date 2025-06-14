@@ -45,6 +45,16 @@ st.markdown("""
 def process_agent_data(df):
     """Process uploaded agent data and calculate metrics"""
     
+    # Ensure numeric columns are properly typed
+    numeric_columns = [
+        '# 1st Quotes', '# 2nd Quotes', '# Submitted', '# Free look',
+        'Smoker %', 'Preferred %', 'Standard %', 'Graded %', 'GI %', 'CC %'
+    ]
+    
+    for col in numeric_columns:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+    
     # Data quality thresholds
     MIN_TOTAL_QUOTES = 50
     MIN_SUBMISSIONS = 10
@@ -184,7 +194,24 @@ def main():
                 else:
                     df = pd.read_excel(uploaded_file, sheet_name='agent summary')
                 
+                # Convert numeric columns to proper data types
+                numeric_columns = [
+                    '# 1st Quotes', '# 2nd Quotes', '# Submitted', '# Free look',
+                    'Smoker %', 'Preferred %', 'Standard %', 'Graded %', 'GI %', 'CC %'
+                ]
+                
+                for col in numeric_columns:
+                    if col in df.columns:
+                        df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+                
                 st.success(f"✅ Loaded {len(df)} records")
+                
+                # Debug: Show data types
+                with st.expander("🔍 Debug: Data Types", expanded=False):
+                    st.write("Column data types:")
+                    st.write(df.dtypes)
+                    st.write("Sample data:")
+                    st.write(df.head(3))
                 
                 # Process data
                 experienced_agents, individual_data = process_agent_data(df)
@@ -217,8 +244,17 @@ def main():
                     help="Filter data by time period"
                 )
                 
-                # Get available weeks for filtering
-                available_weeks = sorted(individual_data['Week'].unique())
+                # Get available weeks for filtering - sort chronologically
+                def sort_weeks_chronologically(weeks):
+                    """Sort weeks chronologically"""
+                    def extract_week_number(week):
+                        import re
+                        match = re.search(r'(\d+)', str(week))
+                        return int(match.group(1)) if match else 0
+                    
+                    return sorted(weeks, key=extract_week_number)
+                
+                available_weeks = sort_weeks_chronologically(individual_data['Week'].unique())
                 
                 # Apply date range filtering to individual data
                 filtered_individual_data = individual_data.copy()
@@ -226,9 +262,11 @@ def main():
                 if date_range_option == "Last 4 Weeks" and len(available_weeks) >= 4:
                     recent_weeks = available_weeks[-4:]
                     filtered_individual_data = individual_data[individual_data['Week'].isin(recent_weeks)]
+                    st.info(f"📅 Filtering to last 4 weeks: {', '.join(recent_weeks)}")
                 elif date_range_option == "Last 8 Weeks" and len(available_weeks) >= 8:
                     recent_weeks = available_weeks[-8:]
                     filtered_individual_data = individual_data[individual_data['Week'].isin(recent_weeks)]
+                    st.info(f"📅 Filtering to last 8 weeks: {', '.join(recent_weeks)}")
                 elif date_range_option == "Custom Range":
                     col1, col2 = st.columns(2)
                     with col1:
@@ -309,6 +347,12 @@ def main():
                 
             except Exception as e:
                 st.error(f"Error loading data: {str(e)}")
+                st.error(f"Error type: {type(e).__name__}")
+                
+                # Show more detailed error information
+                import traceback
+                with st.expander("🔍 Detailed Error Information"):
+                    st.code(traceback.format_exc())
                 return
         else:
             st.info("👆 Please upload your agent summary data to begin analysis")
