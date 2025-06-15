@@ -23,11 +23,19 @@ export default async function handler(req, res) {
   try {
     const { message, dataSummary, hasData } = req.body;
 
+    console.log("Received request:", {
+      message,
+      hasData,
+      dataSummaryExists: !!dataSummary,
+      dataSummaryKeys: dataSummary ? Object.keys(dataSummary) : null,
+    });
+
     if (!message) {
       return res.status(400).json({ error: "Message is required" });
     }
 
     const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+    console.log("API Key status:", ANTHROPIC_API_KEY ? "Found" : "Not found");
 
     if (!ANTHROPIC_API_KEY) {
       console.log("No Anthropic API key found, using fallback response");
@@ -38,6 +46,7 @@ export default async function handler(req, res) {
 
     // Build context-aware prompt
     const contextPrompt = buildContextPrompt(message, dataSummary, hasData);
+    console.log("Built context prompt length:", contextPrompt.length);
 
     console.log("Making request to Anthropic API");
     const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -69,13 +78,17 @@ export default async function handler(req, res) {
     }
 
     const data = await response.json();
-    console.log("Received response from Anthropic API");
+    console.log(
+      "Received response from Anthropic API:",
+      data.content[0].text.substring(0, 100) + "..."
+    );
 
     return res.status(200).json({
       response: data.content[0].text,
     });
   } catch (error) {
     console.error("Error in chat API:", error);
+    console.error("Error details:", error.message);
     return res.status(200).json({
       response: generateFallbackResponse(req.body.message || ""),
     });
