@@ -47,6 +47,7 @@ export default async function handler(req, res) {
     // Build context-aware prompt
     const contextPrompt = buildContextPrompt(message, dataSummary, hasData);
     console.log("Built context prompt length:", contextPrompt.length);
+    console.log("First 200 chars of prompt:", contextPrompt.substring(0, 200));
 
     console.log("Making request to Anthropic API");
     const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -109,7 +110,24 @@ Communication style:
 `;
 
   if (hasData && dataSummary) {
-    prompt += `Current dataset context:
+    try {
+      // Safely stringify sample data
+      let sampleDataStr = "No sample data available";
+      if (dataSummary.sampleRecords && dataSummary.sampleRecords.length > 0) {
+        const sample = dataSummary.sampleRecords[0];
+        // Limit sample to key fields to avoid large JSON
+        const limitedSample = {
+          agent: sample.agent,
+          week: sample.week,
+          submitted: sample.submitted,
+          giPercent: sample.giPercent,
+          ccPercent: sample.ccPercent,
+          firstQuotes: sample.firstQuotes,
+        };
+        sampleDataStr = JSON.stringify(limitedSample, null, 2);
+      }
+
+      prompt += `Current dataset context:
 - Total Records: ${dataSummary.totalRecords}
 - Unique Agents: ${dataSummary.uniqueAgents}
 - Available Fields: ${dataSummary.fieldNames.join(", ")}
@@ -118,10 +136,16 @@ Communication style:
 - Total Submissions: ${dataSummary.summary.totalSubmissions}
 - Total First Quotes: ${dataSummary.summary.totalFirstQuotes}
 
-Sample data structure (first record):
-${JSON.stringify(dataSummary.sampleRecords[0], null, 2)}
+Sample data structure:
+${sampleDataStr}
 
 `;
+    } catch (error) {
+      console.error("Error building data context:", error);
+      prompt += `Dataset available with ${
+        dataSummary.totalRecords || "unknown"
+      } records.\n\n`;
+    }
   }
 
   prompt += `User question: ${message}
