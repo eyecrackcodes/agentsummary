@@ -23,12 +23,34 @@ export default async function handler(req, res) {
   try {
     const { message, dataSummary, hasData } = req.body;
 
-    console.log("Received request:", {
-      message,
-      hasData,
-      dataSummaryExists: !!dataSummary,
-      dataSummaryKeys: dataSummary ? Object.keys(dataSummary) : null,
-    });
+    console.log("=== API CHAT DEBUG ===");
+    console.log("Raw request body keys:", Object.keys(req.body));
+    console.log("Message:", message);
+    console.log("Has data flag:", hasData);
+    console.log("Data summary exists:", !!dataSummary);
+
+    if (dataSummary) {
+      console.log("Data summary keys:", Object.keys(dataSummary));
+      console.log("Data summary structure:", {
+        totalRecords: dataSummary.totalRecords,
+        uniqueAgents: dataSummary.uniqueAgents,
+        fieldNamesCount: dataSummary.fieldNames
+          ? dataSummary.fieldNames.length
+          : 0,
+        sampleRecordsCount: dataSummary.sampleRecords
+          ? dataSummary.sampleRecords.length
+          : 0,
+        summaryKeys: dataSummary.summary
+          ? Object.keys(dataSummary.summary)
+          : null,
+      });
+
+      if (dataSummary.sampleRecords && dataSummary.sampleRecords.length > 0) {
+        console.log("First sample record:", dataSummary.sampleRecords[0]);
+      }
+    } else {
+      console.log("No data summary provided");
+    }
 
     if (!message) {
       return res.status(400).json({ error: "Message is required" });
@@ -47,7 +69,15 @@ export default async function handler(req, res) {
     // Build context-aware prompt
     const contextPrompt = buildContextPrompt(message, dataSummary, hasData);
     console.log("Built context prompt length:", contextPrompt.length);
-    console.log("First 200 chars of prompt:", contextPrompt.substring(0, 200));
+    console.log("First 500 chars of prompt:", contextPrompt.substring(0, 500));
+    console.log(
+      "Prompt includes data context:",
+      contextPrompt.includes("Current dataset context")
+    );
+    console.log(
+      "Prompt includes sample data:",
+      contextPrompt.includes("Sample data structure")
+    );
 
     console.log("Making request to Anthropic API");
     const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -79,17 +109,32 @@ export default async function handler(req, res) {
     }
 
     const data = await response.json();
+    console.log("Anthropic API response structure:", {
+      hasContent: !!data.content,
+      contentLength: data.content ? data.content.length : 0,
+      firstContentType:
+        data.content && data.content[0] ? data.content[0].type : null,
+    });
     console.log(
       "Received response from Anthropic API:",
-      data.content[0].text.substring(0, 100) + "..."
+      data.content[0].text.substring(0, 200) + "..."
     );
+    console.log("Full response length:", data.content[0].text.length);
+    console.log("=== END API CHAT DEBUG ===");
 
     return res.status(200).json({
       response: data.content[0].text,
     });
   } catch (error) {
+    console.error("=== API ERROR ===");
     console.error("Error in chat API:", error);
     console.error("Error details:", error.message);
+    console.error("Error stack:", error.stack);
+    console.error(
+      "Using fallback response for message:",
+      req.body.message || ""
+    );
+    console.error("=== END API ERROR ===");
     return res.status(200).json({
       response: generateFallbackResponse(req.body.message || ""),
     });
@@ -97,6 +142,13 @@ export default async function handler(req, res) {
 }
 
 function buildContextPrompt(message, dataSummary, hasData) {
+  console.log("=== BUILDING CONTEXT PROMPT ===");
+  console.log("buildContextPrompt called with:", {
+    messageLength: message ? message.length : 0,
+    hasDataFlag: hasData,
+    dataSummaryProvided: !!dataSummary,
+  });
+
   let prompt = `You are Dr. John Snow, the pioneering epidemiologist who mapped cholera outbreaks in 1854 London. You're now a modern data analyst combining your historical epidemiological expertise with contemporary business intelligence.
 
 Communication style:
@@ -109,7 +161,10 @@ Communication style:
 
 `;
 
+  console.log("Base prompt length:", prompt.length);
+
   if (hasData && dataSummary) {
+    console.log("Adding data context to prompt...");
     try {
       // Safely stringify sample data
       let sampleDataStr = "No sample data available";
@@ -140,18 +195,32 @@ Sample data structure:
 ${sampleDataStr}
 
 `;
+      console.log(
+        "Data context added successfully. New prompt length:",
+        prompt.length
+      );
     } catch (error) {
       console.error("Error building data context:", error);
       prompt += `Dataset available with ${
         dataSummary.totalRecords || "unknown"
       } records.\n\n`;
+      console.log("Used fallback data context. Prompt length:", prompt.length);
     }
+  } else {
+    console.log(
+      "No data context added. hasData:",
+      hasData,
+      "dataSummary:",
+      !!dataSummary
+    );
   }
 
   prompt += `User question: ${message}
 
 Respond as a modern Dr. John Snow would - brief, practical, and focused on data insights. For simple greetings, just acknowledge and ask what they'd like to analyze.`;
 
+  console.log("Final prompt length:", prompt.length);
+  console.log("=== END BUILDING CONTEXT PROMPT ===");
   return prompt;
 }
 

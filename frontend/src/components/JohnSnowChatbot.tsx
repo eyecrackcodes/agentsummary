@@ -140,16 +140,32 @@ const JohnSnowChatbot: React.FC<JohnSnowChatbotProps> = ({ data }) => {
       // Send data summary instead of full dataset
       const dataSummary = generateDataSummary(data);
 
+      console.log("=== CHATBOT DEBUG ===");
+      console.log("Message:", content);
+      console.log("Data length:", data.length);
+      console.log("Has data:", data.length > 0);
+      console.log("Data summary:", dataSummary);
+      console.log("Sample data record:", data.length > 0 ? data[0] : "No data");
+
+      const requestPayload = {
+        message: content,
+        dataSummary: dataSummary,
+        hasData: data.length > 0,
+      };
+
+      console.log("Request payload:", requestPayload);
+      console.log(
+        "Request payload size:",
+        JSON.stringify(requestPayload).length,
+        "bytes"
+      );
+
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          message: content,
-          dataSummary: dataSummary,
-          hasData: data.length > 0,
-        }),
+        body: JSON.stringify(requestPayload),
       });
 
       if (!response.ok) {
@@ -157,7 +173,17 @@ const JohnSnowChatbot: React.FC<JohnSnowChatbotProps> = ({ data }) => {
       }
 
       const result = await response.json();
-      console.log("API response:", result);
+      console.log("API response status:", response.status);
+      console.log(
+        "API response headers:",
+        Object.fromEntries(response.headers.entries())
+      );
+      console.log("API response body:", result);
+      console.log(
+        "Response length:",
+        result.response ? result.response.length : "No response field"
+      );
+      console.log("=== END CHATBOT DEBUG ===");
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
