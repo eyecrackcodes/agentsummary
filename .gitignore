@@ -127,3 +127,4 @@ celerybeat.pid
 dmypy.json 
 
 .env
+.vercel

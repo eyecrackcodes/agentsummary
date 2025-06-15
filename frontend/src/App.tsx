@@ -17,6 +17,7 @@ import DataGrid from "./components/DataGrid";
 import AnalyticsDashboard from "./components/AnalyticsDashboard";
 import StatisticalSummary from "./components/StatisticalSummary";
 import ErrorBoundary from "./components/ErrorBoundary";
+import JohnSnowChatbot from "./components/JohnSnowChatbot";
 import { AgentSummary } from "../../shared/agentSummary";
 import { demoData } from "./demoData";
 
@@ -184,6 +185,16 @@ function App() {
                     },
                   }}
                 />
+                <Tab
+                  label="🤖 AI Data Analyst"
+                  {...a11yProps(3)}
+                  sx={{
+                    "&.Mui-selected": {
+                      color: "primary.main",
+                      fontWeight: 600,
+                    },
+                  }}
+                />
               </Tabs>
             </Box>
 
@@ -233,6 +244,10 @@ function App() {
             <TabPanel value={tabValue} index={2}>
               <StatisticalSummary data={data} />
             </TabPanel>
+
+            <TabPanel value={tabValue} index={3}>
+              <JohnSnowChatbot data={data} />
+            </TabPanel>
           </Paper>
 
           {data.length > 0 && (
@@ -279,6 +294,19 @@ function App() {
                 >
                   📈 <strong>Statistics Tab:</strong> Advanced metrics,
                   correlations, and benchmarks
+                </Typography>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    bgcolor: "white",
+                    px: 2,
+                    py: 1,
+                    borderRadius: 1,
+                    border: "1px solid #e0e0e0",
+                  }}
+                >
+                  🤖 <strong>AI Analyst:</strong> Chat with John Snow AI for
+                  insights and analysis
                 </Typography>
               </Box>
             </Paper>
