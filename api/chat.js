@@ -58,6 +58,14 @@ export default async function handler(req, res) {
 
     const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
     console.log("API Key status:", ANTHROPIC_API_KEY ? "Found" : "Not found");
+    console.log(
+      "API Key length:",
+      ANTHROPIC_API_KEY ? ANTHROPIC_API_KEY.length : 0
+    );
+    console.log(
+      "API Key starts with:",
+      ANTHROPIC_API_KEY ? ANTHROPIC_API_KEY.substring(0, 10) + "..." : "N/A"
+    );
 
     if (!ANTHROPIC_API_KEY) {
       console.log("No Anthropic API key found, using fallback response");
@@ -80,6 +88,9 @@ export default async function handler(req, res) {
     );
 
     console.log("Making request to Anthropic API");
+    console.log("Request URL: https://api.anthropic.com/v1/messages");
+    console.log("Request headers will include API key:", !!ANTHROPIC_API_KEY);
+
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -105,7 +116,9 @@ export default async function handler(req, res) {
         response.status,
         response.statusText
       );
-      throw new Error(`Anthropic API error: ${response.status}`);
+      const errorBody = await response.text();
+      console.error("Anthropic API error body:", errorBody);
+      throw new Error(`Anthropic API error: ${response.status} - ${errorBody}`);
     }
 
     const data = await response.json();
