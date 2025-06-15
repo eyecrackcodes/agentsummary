@@ -100,9 +100,10 @@ Communication style:
 - Total Records: ${dataSummary.totalRecords}
 - Unique Agents: ${dataSummary.uniqueAgents}
 - Available Fields: ${dataSummary.fieldNames.join(", ")}
-- Average Conversion Rate: ${dataSummary.summary.avgConversionRate}%
-- Average Call Duration: ${dataSummary.summary.avgCallDuration} minutes
+- Average GI Percent: ${dataSummary.summary.avgGiPercent}%
+- Average Credit Card Percent: ${dataSummary.summary.avgCcPercent}%
 - Total Submissions: ${dataSummary.summary.totalSubmissions}
+- Total First Quotes: ${dataSummary.summary.totalFirstQuotes}
 
 Sample data structure (first record):
 ${JSON.stringify(dataSummary.sampleRecords[0], null, 2)}

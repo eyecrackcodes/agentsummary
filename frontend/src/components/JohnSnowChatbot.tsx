@@ -86,15 +86,19 @@ const JohnSnowChatbot: React.FC<JohnSnowChatbotProps> = ({ data }) => {
 
     // Calculate key statistics
     const totalRecords = data.length;
-    const uniqueAgents = new Set(data.map((d) => d.agentName)).size;
+    const uniqueAgents = new Set(data.map((d) => d.agent)).size;
 
-    // Calculate averages for key metrics
-    const avgConversionRate =
-      data.reduce((sum, d) => sum + (d.conversionRate || 0), 0) / data.length;
-    const avgCallDuration =
-      data.reduce((sum, d) => sum + (d.avgCallDuration || 0), 0) / data.length;
+    // Calculate averages for key metrics using actual AgentSummary properties
+    const avgGiPercent =
+      data.reduce((sum, d) => sum + (d.giPercent || 0), 0) / data.length;
+    const avgCcPercent =
+      data.reduce((sum, d) => sum + (d.ccPercent || 0), 0) / data.length;
     const totalSubmissions = data.reduce(
-      (sum, d) => sum + (d.totalSubmissions || 0),
+      (sum, d) => sum + (d.submitted || 0),
+      0
+    );
+    const totalFirstQuotes = data.reduce(
+      (sum, d) => sum + (d.firstQuotes || 0),
       0
     );
 
@@ -107,9 +111,10 @@ const JohnSnowChatbot: React.FC<JohnSnowChatbotProps> = ({ data }) => {
       fieldNames,
       sampleRecords: sample,
       summary: {
-        avgConversionRate: Math.round(avgConversionRate * 100) / 100,
-        avgCallDuration: Math.round(avgCallDuration * 100) / 100,
+        avgGiPercent: Math.round(avgGiPercent * 100) / 100,
+        avgCcPercent: Math.round(avgCcPercent * 100) / 100,
         totalSubmissions,
+        totalFirstQuotes,
       },
     };
   };
