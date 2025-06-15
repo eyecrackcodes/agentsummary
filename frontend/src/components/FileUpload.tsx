@@ -84,7 +84,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataUpload }) => {
             parsedData = results.data;
             setUploadProgress(75);
           },
-          error: (error) => {
+          error: (error: any) => {
             throw new Error(`CSV parsing error: ${error.message}`);
           },
         });
