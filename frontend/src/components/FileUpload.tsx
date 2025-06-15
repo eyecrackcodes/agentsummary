@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import axios from "axios";
+import Papa from "papaparse";
+import * as XLSX from "xlsx";
 import {
   Box,
   Typography,
@@ -65,34 +66,116 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataUpload }) => {
     setSuccess(null);
     setUploadProgress(0);
 
-    const formData = new FormData();
-    formData.append("file", file);
-
     try {
-      const res = await axios.post(
-        `${
-          import.meta.env.VITE_API_BASE_URL || "http://localhost:4000/api"
-        }/upload`,
-        formData,
-        {
-          headers: { "Content-Type": "multipart/form-data" },
-          onUploadProgress: (progressEvent) => {
-            if (progressEvent.total) {
-              const progress = Math.round(
-                (progressEvent.loaded * 100) / progressEvent.total
-              );
-              setUploadProgress(progress);
-            }
+      const fileExtension = file.name
+        .toLowerCase()
+        .substring(file.name.lastIndexOf("."));
+      let parsedData: any[] = [];
+
+      if (fileExtension === ".csv") {
+        // Parse CSV file
+        const text = await file.text();
+        setUploadProgress(50);
+
+        Papa.parse(text, {
+          header: true,
+          skipEmptyLines: true,
+          complete: (results) => {
+            parsedData = results.data;
+            setUploadProgress(75);
           },
-        }
-      );
+          error: (error) => {
+            throw new Error(`CSV parsing error: ${error.message}`);
+          },
+        });
+      } else if (fileExtension === ".xlsx" || fileExtension === ".xls") {
+        // Parse Excel file
+        const arrayBuffer = await file.arrayBuffer();
+        setUploadProgress(50);
 
-      console.log("Upload successful:", res.data.length, "records");
+        const workbook = XLSX.read(arrayBuffer, { type: "array" });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        parsedData = XLSX.utils.sheet_to_json(worksheet);
+        setUploadProgress(75);
+      }
 
-      if (res.data && res.data.length > 0) {
-        onDataUpload(res.data);
+      // Transform data to match AgentSummary interface
+      const transformedData: AgentSummary[] = parsedData.map((record: any) => ({
+        week: String(record.Week || record.week || ""),
+        agent: String(record.Agent || record.agent || ""),
+        firstQuotes:
+          parseInt(
+            String(record["# 1st Quotes"] || record.firstQuotes || "0")
+          ) || 0,
+        secondQuotes:
+          parseInt(
+            String(record["# 2nd Quotes"] || record.secondQuotes || "0")
+          ) || 0,
+        submitted:
+          parseInt(String(record["# Submitted"] || record.submitted || "0")) ||
+          0,
+        freeLooked:
+          parseInt(String(record["# Free look"] || record.freeLooked || "0")) ||
+          0,
+        firstQuoteSmokerPercent:
+          parseFloat(
+            String(
+              record["1st Quote Smoker %"] ||
+                record.firstQuoteSmokerPercent ||
+                "0"
+            )
+          ) || 0,
+        secondQuoteSmokerPercent:
+          parseFloat(
+            String(
+              record["2nd Quote Smoker %"] ||
+                record.secondQuoteSmokerPercent ||
+                "0"
+            )
+          ) || 0,
+        preferredPercent:
+          parseFloat(
+            String(record["Preferred %"] || record.preferredPercent || "0")
+          ) || 0,
+        standardPercent:
+          parseFloat(
+            String(record["Standard %"] || record.standardPercent || "0")
+          ) || 0,
+        gradedPercent:
+          parseFloat(
+            String(record["Graded %"] || record.gradedPercent || "0")
+          ) || 0,
+        giPercent:
+          parseFloat(String(record["GI %"] || record.giPercent || "0")) || 0,
+        ccPercent:
+          parseFloat(String(record["CC %"] || record.ccPercent || "0")) || 0,
+        issuedPaidMinus:
+          parseFloat(
+            String(record["Issued & Paid %-"] || record.issuedPaidMinus || "0")
+          ) || 0,
+        issuedPaidPlus:
+          parseFloat(
+            String(record["Issued & Paid %+"] || record.issuedPaidPlus || "0")
+          ) || 0,
+        smokerPercent:
+          parseFloat(
+            String(record["Smoker %"] || record.smokerPercent || "0")
+          ) || 0,
+        preLapseCases:
+          parseInt(
+            String(record["Pre-lapse Cases"] || record.preLapseCases || "0")
+          ) || 0,
+      }));
+
+      setUploadProgress(100);
+
+      console.log("Upload successful:", transformedData.length, "records");
+
+      if (transformedData.length > 0) {
+        onDataUpload(transformedData);
         setSuccess(
-          `Successfully uploaded ${res.data.length.toLocaleString()} records!`
+          `Successfully processed ${transformedData.length.toLocaleString()} records!`
         );
 
         // Clear the file input after successful upload
@@ -105,7 +188,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataUpload }) => {
         setError("No data found in the uploaded file");
       }
     } catch (e: any) {
-      const errorMsg = e.response?.data?.error || e.message || "Upload failed";
+      const errorMsg = e.message || "File processing failed";
       setError(errorMsg);
       console.error("Upload error:", errorMsg);
     } finally {
@@ -168,7 +251,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataUpload }) => {
                     startIcon={<Analytics />}
                     size="large"
                   >
-                    {loading ? "Uploading..." : "Upload & Analyze"}
+                    {loading ? "Processing..." : "Process & Analyze"}
                   </Button>
                 )}
               </Box>
@@ -199,7 +282,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onDataUpload }) => {
               {loading && (
                 <Box sx={{ mb: 2 }}>
                   <Typography variant="body2" gutterBottom>
-                    Uploading and processing... {uploadProgress}%
+                    Processing file... {uploadProgress}%
                   </Typography>
                   <LinearProgress
                     variant="determinate"
