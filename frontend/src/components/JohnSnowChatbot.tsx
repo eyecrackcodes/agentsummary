@@ -77,6 +77,43 @@ const JohnSnowChatbot: React.FC<JohnSnowChatbotProps> = ({ data }) => {
     },
   ];
 
+  // Generate a compact data summary for API calls
+  const generateDataSummary = (data: AgentSummary[]) => {
+    if (data.length === 0) return null;
+
+    // Sample first 10 records for structure
+    const sample = data.slice(0, 10);
+
+    // Calculate key statistics
+    const totalRecords = data.length;
+    const uniqueAgents = new Set(data.map((d) => d.agentName)).size;
+
+    // Calculate averages for key metrics
+    const avgConversionRate =
+      data.reduce((sum, d) => sum + (d.conversionRate || 0), 0) / data.length;
+    const avgCallDuration =
+      data.reduce((sum, d) => sum + (d.avgCallDuration || 0), 0) / data.length;
+    const totalSubmissions = data.reduce(
+      (sum, d) => sum + (d.totalSubmissions || 0),
+      0
+    );
+
+    // Get field names from first record
+    const fieldNames = Object.keys(data[0]);
+
+    return {
+      totalRecords,
+      uniqueAgents,
+      fieldNames,
+      sampleRecords: sample,
+      summary: {
+        avgConversionRate: Math.round(avgConversionRate * 100) / 100,
+        avgCallDuration: Math.round(avgCallDuration * 100) / 100,
+        totalSubmissions,
+      },
+    };
+  };
+
   const sendMessage = async (content: string) => {
     if (!content.trim() || isLoading) return;
 
@@ -95,6 +132,9 @@ const JohnSnowChatbot: React.FC<JohnSnowChatbotProps> = ({ data }) => {
     setIsLoading(true);
 
     try {
+      // Send data summary instead of full dataset
+      const dataSummary = generateDataSummary(data);
+
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: {
@@ -102,7 +142,8 @@ const JohnSnowChatbot: React.FC<JohnSnowChatbotProps> = ({ data }) => {
         },
         body: JSON.stringify({
           message: content,
-          data: data,
+          dataSummary: dataSummary,
+          hasData: data.length > 0,
         }),
       });
 

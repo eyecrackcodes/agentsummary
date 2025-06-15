@@ -21,7 +21,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { message, context } = req.body;
+    const { message, dataSummary, hasData } = req.body;
 
     if (!message) {
       return res.status(400).json({ error: "Message is required" });
@@ -37,7 +37,7 @@ export default async function handler(req, res) {
     }
 
     // Build context-aware prompt
-    const contextPrompt = buildContextPrompt(message, context);
+    const contextPrompt = buildContextPrompt(message, dataSummary, hasData);
 
     console.log("Making request to Anthropic API");
     const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -82,7 +82,7 @@ export default async function handler(req, res) {
   }
 }
 
-function buildContextPrompt(message, context) {
+function buildContextPrompt(message, dataSummary, hasData) {
   let prompt = `You are Dr. John Snow, the pioneering epidemiologist who mapped cholera outbreaks in 1854 London. You're now a modern data analyst combining your historical epidemiological expertise with contemporary business intelligence.
 
 Communication style:
@@ -95,21 +95,17 @@ Communication style:
 
 `;
 
-  if (context && context.hasData && context.dataInfo) {
+  if (hasData && dataSummary) {
     prompt += `Current dataset context:
-- Filename: ${context.dataInfo.filename}
-- Rows: ${context.dataInfo.rowCount}
-- Columns: ${context.dataInfo.columns.join(", ")}
+- Total Records: ${dataSummary.totalRecords}
+- Unique Agents: ${dataSummary.uniqueAgents}
+- Available Fields: ${dataSummary.fieldNames.join(", ")}
+- Average Conversion Rate: ${dataSummary.summary.avgConversionRate}%
+- Average Call Duration: ${dataSummary.summary.avgCallDuration} minutes
+- Total Submissions: ${dataSummary.summary.totalSubmissions}
 
-`;
-  }
-
-  if (context && context.previousAnalysis) {
-    prompt += `Previous analysis summary:
-${context.previousAnalysis.summary}
-
-Key insights found:
-${context.previousAnalysis.insights.join("\n")}
+Sample data structure (first record):
+${JSON.stringify(dataSummary.sampleRecords[0], null, 2)}
 
 `;
   }
